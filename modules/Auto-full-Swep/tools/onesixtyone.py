@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import subprocess
 import sys
 import os
 import time
 import select
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, ensure_wordlists, get_output_base
+
+ensure_commands(["onesixtyone"])
+WORDLISTS = ensure_wordlists(["seclists_snmp"])
 
 def check_installation():
     try:
@@ -41,7 +49,7 @@ def main():
     port = sys.argv[2]
     
     # Create output directory
-    output_dir = f"/tmp/VirexCore/{ip}/onesixtyone"
+    output_dir = f"{get_output_base()}/{ip}/onesixtyone"
     os.makedirs(output_dir, exist_ok=True)
     report_file = f"{output_dir}/report.txt"
     
@@ -59,7 +67,7 @@ def main():
     if choice == "1":
         wordlist_choice = prompt_with_timeout("[?] Defualt wordlist {Y/N}?", "Y")
         if wordlist_choice.upper() == "Y":
-            cmd = f"onesixtyone {ip}"
+            cmd = f"onesixtyone -c {WORDLISTS['seclists_snmp']} {ip}"
         else:
             wordlist = input("[!] Enter wordlists path? ")
             cmd = f"onesixtyone -c {wordlist} {ip}"
@@ -67,7 +75,7 @@ def main():
         ip_file = input("[!] Enter the path ip file? ")
         wordlist_choice = prompt_with_timeout("[?] Defualt wordlist Y 3sec ? {Y/N}?", "Y")
         if wordlist_choice.upper() == "Y":
-            cmd = f"onesixtyone -i {ip_file}"
+            cmd = f"onesixtyone -c {WORDLISTS['seclists_snmp']} -i {ip_file}"
         else:
             wordlist = input("[!] Enter wordlists path? ")
             cmd = f"onesixtyone -c {wordlist} -i {ip_file}"

@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import subprocess
 import sys
 import os
 import time
 import select
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, get_output_base
+
+ensure_commands(["smbmap"])
 
 def check_installation():
     try:
@@ -41,7 +48,7 @@ def main():
     port = sys.argv[2]
     
     # Create output directory
-    output_dir = f"/tmp/VirexCore/{ip}/smbmap"
+    output_dir = f"{get_output_base()}/{ip}/smbmap"
     os.makedirs(output_dir, exist_ok=True)
     report_file = f"{output_dir}/report.txt"
     

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 
 import os
 import sys
@@ -7,6 +9,11 @@ import socket
 import ftplib
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, get_output_base
+
+ensure_commands(["nmap"])
 
 # Colors
 RED = "\033[1;31m"
@@ -156,7 +163,7 @@ def main():
     print(f"{CYAN}{'='*50}{RESET}")
     
     # Create output directory
-    output_dir = Path("/tmp/VirexCore/ftp_checks")
+    output_dir = Path(get_output_base()) / "ftp_checks"
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Check FTP anonymous access

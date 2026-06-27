@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import subprocess
 import sys
 import os
@@ -9,6 +11,12 @@ import threading
 import queue
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, ensure_wordlists, get_output_base
+
+ensure_commands(["wpscan"])
+WORDLISTS = ensure_wordlists(["rockyou"])
 
 # Color codes for output
 class Colors:
@@ -61,7 +69,7 @@ def ask_wordlist():
     print(f"{Colors.HEADER}=========[ 🔐 Password Brute Force Attempt (XML-RPC): ]=============={Colors.ENDC}")
     choice = input(f"{Colors.OKBLUE}[?] Default ../../rockyou.txt (y/n)? {Colors.ENDC}").strip().lower()
     if choice == 'y':
-        wordlist = "/usr/share/wordlists/rockyou.txt"
+        wordlist = WORDLISTS["rockyou"]
         if not os.path.isfile(wordlist):
             print(f"{Colors.FAIL}[!] rockyou.txt not found in default location.{Colors.ENDC}")
             wordlist = "rockyou.txt"
@@ -406,7 +414,7 @@ def main():
     banner()
     
     # Create output directory
-    output_dir = Path(f"/tmp/VirexCore/{target_ip}/Wpscan")
+    output_dir = Path(f"{get_output_base()}/{target_ip}/Wpscan")
     output_dir.mkdir(parents=True, exist_ok=True)
     enum_output_file = output_dir / "enum_output.txt"
     attack_output_file = output_dir / "attack_output.txt"

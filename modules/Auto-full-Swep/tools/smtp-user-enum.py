@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import subprocess
 import sys
 import os
 import time
 import select
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, ensure_wordlists, get_output_base
+
+ensure_commands(["smtp-user-enum", "hydra"])
+WORDLISTS = ensure_wordlists(["seclists_usernames", "rockyou"])
 
 def check_installation():
     try:
@@ -41,7 +49,7 @@ def main():
     port = sys.argv[2]
     
     # Create output directory
-    output_dir = f"/tmp/VirexCore/{ip}/smtp-user-enum"
+    output_dir = f"{get_output_base()}/{ip}/smtp-user-enum"
     os.makedirs(output_dir, exist_ok=True)
     report_file = f"{output_dir}/report.txt"
     
@@ -65,7 +73,7 @@ def main():
     
     wordlist_choice = prompt_with_timeout("[?] Use default user list? (Y/n):", "Y")
     if wordlist_choice.upper() == "Y":
-        wordlist = "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+        wordlist = WORDLISTS["seclists_usernames"]
     else:
         wordlist = input("[!] User list path: ")
     
@@ -92,7 +100,7 @@ def main():
         
         if spray_choice.upper() == "Y":
             print("[✓] Testing with common passwords...")
-            spray_cmd = f"hydra -L {wordlist} -P /usr/share/wordlists/fasttrack.txt {ip} smtp"
+            spray_cmd = f"hydra -L {wordlist} -P {WORDLISTS['rockyou']} {ip} smtp"
             
             with open(report_file, 'a') as report:
                 report.write("\n\n=== PASSWORD SPRAYING ===\n")

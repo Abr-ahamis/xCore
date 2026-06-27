@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import os
 import re
 import subprocess
-import sys
+import shutil
 from pathlib import Path
+
+from recon_deps import ensure_commands, get_hint_ports, get_output_base
 
 # Colors
 GREEN = "\033[1;32m"
@@ -17,18 +21,35 @@ if len(sys.argv) != 2:
     print(f"{YELLOW}Usage: {sys.argv[0]} <target_ip>{RESET}")
     sys.exit(1)
 
+ensure_commands(["python3", "nmap", "rustscan"])
+
 target = sys.argv[1]
-outdir = Path(f"/tmp/VirexCore/{target.replace('/', '_')}")
+outdir = Path(get_output_base()) / target.replace('/', '_')
 outdir.mkdir(exist_ok=True, parents=True)
 outfile = outdir / "rustscan.txt"
+stream_log = outdir / "scan.log"
 
 # Header
 print(f"{CYAN}{BOLD}======================[ Rustscan ]==================================={RESET}")
 print(f"{GREEN}[+] Running Rustscan scan...  [+] Target: {target}{RESET}")
 
-cmd = [
-    "rustscan", "-a", target, "--ulimit", "5000", "--", "-A", "-oN", str(outfile)
-]
+hint_ports = get_hint_ports()
+if shutil.which("rustscan"):
+    cmd = [
+        "rustscan",
+        "-a", target,
+        "--ulimit", "5000",
+        "-b", "500",
+        "-t", "2000",
+        "--",
+        "-A",
+        "-oN", str(outfile),
+    ]
+else:
+    if hint_ports:
+        cmd = ["nmap", "-sT", "-sV", "--version-light", "-n", "-Pn", "--open", "-T4", "--max-retries", "0", "--host-timeout", "45s", f"-p{hint_ports}", target, "-oN", str(outfile)]
+    else:
+        cmd = ["nmap", "-Pn", "-sV", "-O", "-T4", "--open", "-p-", target, "-oN", str(outfile)]
 
 # Start Rustscan
 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
@@ -39,42 +60,93 @@ os_info = []
 
 capture_service = False
 service_block = []
+seen_ports = set()
 
 # Section: Port Summary
 print(f"{YELLOW}=============[ OPEN PORTS ]=================={RESET}")
 
-for line in proc.stdout:
-    line = line.rstrip()
+with stream_log.open("w", encoding="utf-8", errors="ignore") as report:
+    for line in proc.stdout:
+        report.write(line)
+        report.flush()
+        line = line.rstrip()
 
-    # Display open port summary
-    if line.startswith("Open "):
-        print(f"{GREEN}{line}{RESET}")
+        if line.startswith("Open "):
+            port_match = re.search(r":(\d+)\b", line)
+            if port_match:
+                port = port_match.group(1)
+                if port not in seen_ports:
+                    seen_ports.add(port)
+                    open_ports.append(port)
+                    print(f"{GREEN}{port}{RESET}")
+            else:
+                print(f"{GREEN}{line}{RESET}")
 
-    elif re.match(r'^(\d+)/tcp\s+open\s+', line):
-        port = re.match(r'^(\d+)/tcp\s+open', line).group(1)
-        open_ports.append(port)
-        if service_block:
+        elif re.match(r'^(\d+)/tcp\s+open\s+', line):
+            port = re.match(r'^(\d+)/tcp\s+open', line).group(1)
+            if port not in seen_ports:
+                seen_ports.add(port)
+                open_ports.append(port)
+                print(f"{GREEN}{port}{RESET}")
+            if service_block:
+                services_details.append("\n".join(service_block))
+                service_block = []
+            service_block.append(line)
+            capture_service = True
+
+        elif capture_service and line.startswith("|"):
+            service_block.append(line)
+
+        elif capture_service and not line.startswith("|"):
             services_details.append("\n".join(service_block))
             service_block = []
-        service_block.append(line)
-        capture_service = True
+            capture_service = False
 
-    elif capture_service and line.startswith("|"):
-        service_block.append(line)
-
-    elif capture_service and not line.startswith("|"):
-        services_details.append("\n".join(service_block))
-        service_block = []
-        capture_service = False
-
-    elif line.lower().startswith(("running:", "os cpe:", "os details:", "device type:", "service info:")):
-        os_info.append(line)
+        elif line.lower().startswith(("running:", "os cpe:", "os details:", "device type:", "service info:")):
+            os_info.append(line)
 
 # Append remaining service block
 if service_block:
     services_details.append("\n".join(service_block))
 
 proc.wait()
+
+if outfile.exists():
+    capture_service = False
+    service_block = []
+    with outfile.open("r", encoding="utf-8", errors="ignore") as nmap_report:
+        for raw_line in nmap_report:
+            line = raw_line.rstrip()
+            if re.match(r'^(\d+)/tcp\s+open\s+', line):
+                port = re.match(r'^(\d+)/tcp\s+open', line).group(1)
+                if port not in seen_ports:
+                    seen_ports.add(port)
+                    open_ports.append(port)
+                if service_block:
+                    services_details.append("\n".join(service_block))
+                    service_block = []
+                service_block.append(line)
+                capture_service = True
+            elif capture_service and line.startswith("|"):
+                service_block.append(line)
+            elif capture_service and not line.startswith("|"):
+                if service_block:
+                    services_details.append("\n".join(service_block))
+                service_block = []
+                capture_service = False
+            elif line.lower().startswith(("running:", "os cpe:", "os details:", "device type:", "service info:")):
+                os_info.append(line)
+
+# Deduplicate while preserving order
+open_ports = list(dict.fromkeys(open_ports))
+deduped_services = []
+seen_blocks = set()
+for block in services_details:
+    if block not in seen_blocks:
+        seen_blocks.add(block)
+        deduped_services.append(block)
+services_details = deduped_services
+os_info = list(dict.fromkeys(os_info))
 
 # Scan Complete
 print(f"{CYAN}{'='*65}")

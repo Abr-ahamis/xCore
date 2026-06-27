@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import subprocess
 import sys
 import os
 import time
 import select
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, get_output_base
+
+ensure_commands(["telnet"])
 
 def prompt_with_timeout(prompt, default=None, timeout=3):
     print(prompt)
@@ -26,7 +33,7 @@ def main():
     port = sys.argv[2]
     
     # Create output directory
-    output_dir = f"/tmp/VirexCore/{ip}/Telnet"
+    output_dir = f"{get_output_base()}/{ip}/Telnet"
     os.makedirs(output_dir, exist_ok=True)
     report_file = f"{output_dir}/report.txt"
     

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import os
 import sys
+sys.dont_write_bytecode = True
+import os
 import time
 import subprocess
 import re
@@ -9,6 +10,9 @@ import threading
 import signal
 import shutil
 from pathlib import Path
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Auto-full-Swep"))
+from recon_deps import ensure_commands, get_hint_ports, get_output_base
 
 # Color definitions
 class Colors:
@@ -25,8 +29,9 @@ class Colors:
 
 class NetworkRecon:
     def __init__(self, target):
+        ensure_commands(["arp-scan", "traceroute", "masscan"])
         self.target = target
-        self.output_base = "/tmp/VirexCore"
+        self.output_base = get_output_base()
         self.output_dir = self._create_output_dir(target)
         self.monitor_interface = None
         self.wifi_networks = []
@@ -152,8 +157,16 @@ class NetworkRecon:
             print(f"\n{Colors.CYAN}[+] Scanning host {i+1}/{len(hosts[:5])}: {host}{Colors.RESET}")
             
             host_file = os.path.join(self.output_dir, f"host_{host.replace('.', '_')}.txt")
+            hint_ports = get_hint_ports()
+            if shutil.which("rustscan"):
+                scan_command = f"rustscan -a {host} --range 1-1000 --ulimit 5000 -b 500 -t 2000"
+            else:
+                if hint_ports:
+                    scan_command = f"nmap -sT -sV --version-light -n -Pn --open -T4 --max-retries 0 --host-timeout 45s -p{hint_ports} {host}"
+                else:
+                    scan_command = f"nmap -Pn -sV -O -T4 --open -p- {host}"
             self._run_command_with_output(
-                f"rustscan -a {host} --range 1-1000 -t 1000",
+                scan_command,
                 host_file,
                 f"Port scanning on host {host}"
             )

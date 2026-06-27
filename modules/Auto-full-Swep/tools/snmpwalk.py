@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import subprocess
 import sys
 import os
 import time
 import select
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, ensure_wordlists, get_output_base
+
+ensure_commands(["snmpwalk", "onesixtyone"])
+WORDLISTS = ensure_wordlists(["seclists_snmp"])
 
 def check_installation():
     try:
@@ -41,7 +49,7 @@ def main():
     port = sys.argv[2]
     
     # Create output directory
-    output_dir = f"/tmp/VirexCore/{ip}/snmpwalk"
+    output_dir = f"{get_output_base()}/{ip}/snmpwalk"
     os.makedirs(output_dir, exist_ok=True)
     report_file = f"{output_dir}/report.txt"
     
@@ -83,7 +91,7 @@ def main():
             
             if brute_choice.upper() == "Y":
                 print("[✓] Launching onesixtyone with top-50 list...")
-                brute_cmd = f"onesixtyone -c /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings.txt {ip}"
+                brute_cmd = f"onesixtyone -c {WORDLISTS['seclists_snmp']} {ip}"
                 
                 with open(report_file, 'a') as report:
                     report.write("\n\n=== COMMUNITY STRING BRUTEFORCE ===\n")

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-
-import os
 import sys
+sys.dont_write_bytecode = True
+import os
 import subprocess
 import re
 from pathlib import Path
 from datetime import datetime
+
+from recon_deps import ensure_commands, get_hint_ports, get_output_base
 
 # Terminal colors
 GREEN = "\033[1;32m"
@@ -24,7 +26,7 @@ def get_target_input():
 
 def get_ports_from_rustscan_output(target):
     """Get ports from existing rustscan output to avoid re-scanning"""
-    rustscan_file = f"/tmp/VirexCore/{target.replace('/', '_')}/rustscan.txt"
+    rustscan_file = f"{get_output_base()}/{target.replace('/', '_')}/rustscan.txt"
     
     if os.path.exists(rustscan_file):
         print(f"{GREEN}[+]{RESET} Using existing rustscan results from: {rustscan_file}")
@@ -45,6 +47,10 @@ def get_ports_from_rustscan_output(target):
 def run_fast_port_scan(target):
     """Fast port discovery using nmap with optimized settings"""
     print(f"{CYAN}=========== Fast Port Discovery ====================================={RESET}")
+    hinted_ports = get_hint_ports()
+    if hinted_ports:
+        print(f"{GREEN}[+]{RESET} Using hinted ports: {hinted_ports}")
+        return hinted_ports
     try:
         fast_scan_cmd = [
             "nmap", "-sS", "-T4", "--top-ports", "1000",
@@ -101,7 +107,7 @@ def run_optimized_vuln_scan(target, ports):
 def save_output(target, raw_output):
     """Save scan output to file"""
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_dir = Path(f"/tmp/VirexCore/{target.replace('/', '_')}")
+    output_dir = Path(get_output_base()) / target.replace('/', '_')
     output_dir.mkdir(parents=True, exist_ok=True)
     file_path = output_dir / "nmap-vuln.txt"
     
@@ -158,7 +164,7 @@ def chain_to_searchsploit(target):
     """Chain to searchsploit.py for exploit search"""
     script_dir = os.path.dirname(os.path.realpath(__file__))
     searchsploit_script = os.path.join(script_dir, "searchsploit.py")
-    nmap_output_file = f"/tmp/VirexCore/{target.replace('/', '_')}/nmap-vuln.txt"
+    nmap_output_file = f"{get_output_base()}/{target.replace('/', '_')}/nmap-vuln.txt"
     
     if os.path.isfile(searchsploit_script) and os.path.exists(nmap_output_file):
         print(f"{GREEN}[✓] Launching searchsploit with nmap results{RESET}")
@@ -174,6 +180,7 @@ def chain_to_searchsploit(target):
 
 def main():
     banner()
+    ensure_commands(["nmap", "searchsploit", "python3"])
     
     # Get target from command line or user input
     target = sys.argv[1] if len(sys.argv) > 1 else get_target_input()

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 
 import os
 import subprocess
-import sys
 from pathlib import Path
+
+from recon_deps import ensure_commands, get_output_base
 
 # ANSI color codes
 RED = "\033[1;31m"
@@ -20,6 +23,16 @@ BASE_DIR = Path(__file__).resolve().parent
 # Output directories
 OUTPUT_DIR = "/tmp/VirexCore"
 REPORTS_DIR = os.path.join(OUTPUT_DIR, "reports")
+
+def ensure_output_dir(path):
+    try:
+        os.makedirs(path, exist_ok=True)
+        test_file = Path(path) / ".write_test"
+        test_file.write_text("", encoding="utf-8")
+        test_file.unlink(missing_ok=True)
+    except PermissionError:
+        subprocess.run(["sudo", "-n", "chown", "-R", f"{os.getuid()}:{os.getgid()}", path], check=False)
+        os.makedirs(path, exist_ok=True)
 
 def banner():
     os.system("clear")
@@ -57,7 +70,11 @@ def run_script(script_name, target):
         return False
 
 def main():
+    global OUTPUT_DIR, REPORTS_DIR
+    OUTPUT_DIR = get_output_base(OUTPUT_DIR)
+    REPORTS_DIR = os.path.join(OUTPUT_DIR, "reports")
     banner()
+    ensure_commands(["python3", "curl", "ffuf", "nmap", "searchsploit"])
     target = input(f"{CYAN}     🔍 Target IP or Domain : {RESET}").strip()
 
     if not target:
@@ -65,6 +82,7 @@ def main():
         sys.exit(1)
 
     # Create output directories
+    ensure_output_dir(OUTPUT_DIR)
     os.makedirs(REPORTS_DIR, exist_ok=True)
     target_dir = os.path.join(OUTPUT_DIR, target.replace('/', '_'))
     os.makedirs(target_dir, exist_ok=True)

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-import os
 import sys
+sys.dont_write_bytecode = True
+import os
 import time
 import re
 import subprocess
 import socket
 import ftplib
+import shutil
 from pathlib import Path
+
+from recon_deps import ensure_commands, get_hint_ports, get_output_base
 
 # Colors
 RED = "\033[1;31m"
@@ -23,6 +27,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TRIGGER_FILE = os.path.join(SCRIPT_DIR, 'Wordlists', 'trigger.txt')
 TOOLS_DIR = os.path.join(SCRIPT_DIR, 'tools')
 RUSTSCAN_DEFAULT = './rustscan.txt'
+
+ensure_commands(["python3", "nmap", "rustscan"])
 
 # Default credentials for various services
 DEFAULT_CREDENTIALS = {
@@ -43,7 +49,7 @@ DEFAULT_CREDENTIALS = {
 
 def get_target_dir(target_ip):
     """Create and return the target directory path"""
-    target_dir = f"/tmp/VirexCore/{target_ip}"
+    target_dir = f"{get_output_base()}/{target_ip}"
     os.makedirs(target_dir, exist_ok=True)
     return target_dir
 
@@ -73,7 +79,14 @@ def check_and_run_rustscan(target):
         return scan_file
     print(f"{YELLOW}[~] Running rustscan on {target}...{RESET}")
     try:
-        cmd = ["rustscan", "-a", target, "--", "-A"]
+        hint_ports = get_hint_ports()
+        if shutil.which("rustscan"):
+            cmd = ["rustscan", "-a", target, "--ulimit", "5000", "-b", "500", "-t", "2000", "--", "-A"]
+        else:
+            if hint_ports:
+                cmd = ["nmap", "-sT", "-sV", "--version-light", "-n", "-Pn", "--open", "-T4", "--max-retries", "0", "--host-timeout", "45s", f"-p{hint_ports}", target]
+            else:
+                cmd = ["nmap", "-Pn", "-sV", "-O", "-T4", "--open", "-p-", target]
         with open(scan_file, 'w') as f:
             result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, timeout=600, text=True)
         if result.returncode == 0:

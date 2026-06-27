@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-import subprocess
 import sys
+sys.dont_write_bytecode = True
+import subprocess
 import os
 from pathlib import Path
+
+from recon_deps import ensure_commands
 
 # Colors
 GREEN = "\033[1;32m"
@@ -16,6 +19,8 @@ RESET = "\033[0m"
 if len(sys.argv) < 3:
     print(f"{RED}Usage: ./curl_web_checker.py <target_ip> <comma_separated_ports>{RESET}")
     sys.exit(1)
+
+ensure_commands(["curl", "python3"])
 
 target_ip = sys.argv[1]
 ports_raw = sys.argv[2]
@@ -65,6 +70,6 @@ web_ports = ",".join(str(port) for port in ports)
 
 if ffuf_script.exists():
 #    print(f"{GREEN}[✓] Running ffuf with detected web ports...{RESET}")
-    subprocess.call(["python3", str(ffuf_script), target_ip, web_ports])
+    subprocess.call(["python3", str(ffuf_script), target_ip, web_ports, "both"])
 else:
     print(f"{RED}[!] ffuf.py not found at {ffuf_script}. Skipping FFUF phase.{RESET}")

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import os
 import sys
 import time
@@ -54,12 +56,9 @@ class ReconnaissanceMain:
         print(f"{Colors.YELLOW}2){Colors.RESET} {Colors.BOLD}Active Reconnaissance{Colors.RESET}")
         print(f"{Colors.YELLOW}3){Colors.RESET} {Colors.BOLD}Network Reconnaissance{Colors.RESET}")
         print(f"{Colors.YELLOW}4){Colors.RESET} {Colors.BOLD}Web Application Reconnaissance{Colors.RESET}")
-        print(f"{Colors.YELLOW}5){Colors.RESET} {Colors.BOLD}Wireless Reconnaissance{Colors.RESET}")
-        print(f"{Colors.YELLOW}6){Colors.RESET} {Colors.BOLD}Physical Reconnaissance{Colors.RESET}")
-        print(f"{Colors.YELLOW}7){Colors.RESET} {Colors.BOLD}Personal Reconnaissance{Colors.RESET}")
         print(f"{Colors.YELLOW}0){Colors.RESET} {Colors.BOLD}Back to Main Menu{Colors.RESET}")
         print()
-        print(f"{Colors.CYAN}{Colors.BOLD}Enter your choice [0-7]: {Colors.RESET}", end=" ")
+        print(f"{Colors.CYAN}{Colors.BOLD}Enter your choice [0-4]: {Colors.RESET}", end=" ")
 
     def _get_target_input(self, recon_type):
         self._clear_screen()
@@ -72,9 +71,6 @@ class ReconnaissanceMain:
             "Active Reconnaissance": "Enter target IP or range: ",
             "Network Reconnaissance": "Enter network range (e.g., 192.168.1.0/24): ",
             "Web Application Reconnaissance": "Enter target URL (e.g., https://example.com): ",
-            "Wireless Reconnaissance": "Enter wireless interface (e.g., wlan0): ",
-            "Physical Reconnaissance": "Enter organization name: ",
-            "Personal Reconnaissance": "Enter username, email, or name: "
         }
 
         prompt = prompts.get(recon_type, "Enter target: ")
@@ -118,13 +114,10 @@ class ReconnaissanceMain:
                     "2": ("Active Reconnaissance", "active_recon", "ActiveRecon"),
                     "3": ("Network Reconnaissance", "network_recon", "NetworkRecon"),
                     "4": ("Web Application Reconnaissance", "webapp_recon", "WebappRecon"),
-                    "5": ("Wireless Reconnaissance", "wireless_recon", "WirelessRecon"),
-                    "6": ("Physical Reconnaissance", "physical_recon", "PhysicalRecon"),
-                    "7": ("Personal Reconnaissance", "personal_recon", "PersonalRecon"),
                 }
 
                 if choice not in recon_types:
-                    print(f"{Colors.RED}Invalid choice. Please select a valid option [0-7].{Colors.RESET}")
+                    print(f"{Colors.RED}Invalid choice. Please select a valid option [0-4].{Colors.RESET}")
                     time.sleep(2)
                     continue
 

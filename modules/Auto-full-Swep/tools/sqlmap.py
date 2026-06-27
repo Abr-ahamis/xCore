@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 
 import os
 import sys
@@ -6,6 +8,11 @@ import subprocess
 import re
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, get_output_base
+
+ensure_commands(["sqlmap", "curl"])
 
 # Colors
 RED = "\033[1;31m"
@@ -239,7 +246,7 @@ def main():
     banner()
     
     # Create output directory
-    output_dir = Path("/tmp/VirexCore/sqlmap")
+    output_dir = Path(get_output_base()) / "sqlmap"
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Run basic SQL injection tests first

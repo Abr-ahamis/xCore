@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import os
 import sys
 import time
@@ -9,6 +11,9 @@ import threading
 import signal
 import shutil
 from pathlib import Path
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Auto-full-Swep"))
+from recon_deps import ensure_commands, get_output_base
 
 # Color definitions
 class Colors:
@@ -25,8 +30,9 @@ class Colors:
 
 class PassiveRecon:
     def __init__(self, target):
+        ensure_commands(["whois", "dig", "nslookup", "theHarvester", "amass", "subfinder", "curl", "shodan"])
         self.target = target
-        self.output_base = "/tmp/VirexCore"
+        self.output_base = get_output_base()
         self.output_dir = self._create_output_dir(target)
         
         # Set Python cache prefix to target-specific directory

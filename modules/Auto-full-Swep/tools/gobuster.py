@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 import subprocess
 import sys
 import os
 import time
 import select
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, ensure_wordlists, get_output_base
+
+ensure_commands(["gobuster"])
+WORDLISTS = ensure_wordlists(["seclists_web", "seclists_dns"])
 
 def check_installation():
     try:
@@ -41,7 +49,7 @@ def main():
     port = sys.argv[2]
     
     # Create output directory
-    output_dir = f"/tmp/VirexCore/{ip}/Gobuster"
+    output_dir = f"{get_output_base()}/{ip}/Gobuster"
     os.makedirs(output_dir, exist_ok=True)
     report_file = f"{output_dir}/report.txt"
     
@@ -59,7 +67,7 @@ def main():
     
     wordlist_choice = prompt_with_timeout("[?] Wordlist: default (raft-medium)? Y", "Y")
     if wordlist_choice.upper() == "Y":
-        wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+        wordlist = WORDLISTS["seclists_dns"] if choice == "2" else WORDLISTS["seclists_web"]
     else:
         wordlist = input("[!] Path: ")
     

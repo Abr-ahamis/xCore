@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 
 import os
 import re
 import sys
 import subprocess
+
+from recon_deps import ensure_commands, get_output_base
 
 # Colors
 RED = "\033[1;31m"
@@ -18,10 +22,12 @@ if len(sys.argv) != 2:
     print(f"{RED}Usage: {sys.argv[0]} <nmap_results.txt>{RESET}")
     sys.exit(1)
 
+ensure_commands(["searchsploit"])
+
 nmap_file = sys.argv[1]
 
 # Create output directory
-OUTPUT_DIR = "/tmp/VirexCore/searchsploit_results"
+OUTPUT_DIR = f"{get_output_base()}/searchsploit_results"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print(f"{CYAN}================ searchsploit ===================================={RESET}")
@@ -90,4 +96,3 @@ for service in services:
 
 print(f"{CYAN}======================================================================{RESET}")
 print(f"{GREEN}[!] Searchsploit scan completed. Results saved in {OUTPUT_DIR}{RESET}")
-

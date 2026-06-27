@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
+import sys
+sys.dont_write_bytecode = True
 
 import sys
 import socket
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from recon_deps import ensure_commands, ensure_python_packages, get_output_base
+
+ensure_commands(["telnet"])
+ensure_python_packages(["paramiko", "pexpect", "requests"])
+
 import ftplib
 import paramiko
 import pexpect

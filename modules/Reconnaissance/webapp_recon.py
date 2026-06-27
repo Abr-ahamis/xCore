@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import os
 import sys
+sys.dont_write_bytecode = True
+import os
 import time
 import subprocess
 import re
@@ -9,6 +10,9 @@ import threading
 import signal
 import shutil  # Added import
 from pathlib import Path
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Auto-full-Swep"))
+from recon_deps import ensure_commands, ensure_wordlists, get_hint_ports, get_output_base
 
 # Color definitions
 class Colors:
@@ -25,13 +29,16 @@ class Colors:
 
 class WebappRecon:
     def __init__(self, target):
+        ensure_commands(["curl", "whatweb", "host", "subfinder", "ffuf", "nikto"])
+        wordlists = ensure_wordlists(["seclists_web", "seclists_dns"])
         self.target = target
-        self.output_base = "/tmp/VirexCore"
+        self.output_base = get_output_base()
         self.output_dir = self._create_output_dir(target)
         self.open_ports = set()  # Using set to avoid duplicates
         self.web_ports = set()   # Using set to avoid duplicates
         self.ffuf_mode = "2"     # Default to path fuzzing
-        self.wordlist = "/usr/share/wordlists/dirb/common.txt"
+        self.wordlist = wordlists["seclists_web"]
+        self.file_extensions = "php,bak,zip,html,txt,js,conf,json,old,swp"
         
         # Normalize URL
         if not self.target.startswith(('http://', 'https://')):
@@ -134,8 +141,16 @@ class WebappRecon:
             ip = self.target.replace('http://', '').replace('https://', '').split('/')[0]
         
         rustscan_file = os.path.join(self.output_dir, "rustscan.txt")
+        hint_ports = get_hint_ports()
+        if shutil.which("rustscan"):
+            scan_command = f"rustscan -a {ip} --range 1-65535 --ulimit 5000 -b 500 -t 2000"
+        else:
+            if hint_ports:
+                scan_command = f"nmap -sT -sV --version-light -n -Pn --open -T4 --max-retries 0 --host-timeout 45s -p{hint_ports} {ip}"
+            else:
+                scan_command = f"nmap -Pn -sV -O -T4 --open -p- {ip}"
         success = self._run_command_with_output(
-            f"rustscan -a {ip} --range 1-65535 -t 5000",
+            scan_command,
             rustscan_file,
             "Port scanning with rustscan"
         )
@@ -314,11 +329,13 @@ class WebappRecon:
             
             # Set URL based on mode
             if self.ffuf_mode == "1":
-                url = f"http://FUZZ.{ip}:{port}/"
+                url = f"http://{ip}:{port}/"
                 mode_desc = "Subdomain fuzzing"
+                extra_args = ["-H", "Host: FUZZ"]
             else:
                 url = f"http://{ip}:{port}/FUZZ"
                 mode_desc = "Path fuzzing"
+                extra_args = ["-e", self.file_extensions, "-recursion", "-recursion-depth", "2", "-ac", "-fc", "404"]
             
             # Run ffuf command
             command = [
@@ -327,7 +344,8 @@ class WebappRecon:
                 "-w", self.wordlist,
                 "-t", "40",
                 "-mc", "200,301,302,307,401,403,405,500",
-                "-o", port_ffuf_file
+                "-o", port_ffuf_file,
+                *extra_args
             ]
             
             # Run command and capture output
@@ -486,7 +504,7 @@ class WebappRecon:
                 self.wordlist = input(f"{Colors.WHITE}[*] Enter custom wordlist path: {Colors.RESET}").strip()
                 if not os.path.exists(self.wordlist):
                     print(f"{Colors.RED}[!] Wordlist path not found. Using default.{Colors.RESET}")
-                    self.wordlist = "/usr/share/wordlists/dirb/common.txt"
+                    self.wordlist = ensure_wordlists(["seclists_web"])["seclists_web"]
         except (EOFError, KeyboardInterrupt):
             print(f"\n{Colors.YELLOW}[!] Using default wordlist{Colors.RESET}")
         

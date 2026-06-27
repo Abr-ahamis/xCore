@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import os
 import sys
+sys.dont_write_bytecode = True
+import os
 import time
 import subprocess
 import re
@@ -9,6 +10,9 @@ import threading
 import signal
 import shutil
 from pathlib import Path
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Auto-full-Swep"))
+from recon_deps import ensure_commands, get_hint_ports, get_output_base
 
 # Color definitions
 class Colors:
@@ -25,8 +29,9 @@ class Colors:
 
 class ActiveRecon:
     def __init__(self, target):
+        ensure_commands(["nmap", "curl", "searchsploit", "ssh-audit", "whatweb", "smbclient", "mysql"])
         self.target = target
-        self.output_base = "/tmp/VirexCore"
+        self.output_base = get_output_base()
         self.output_dir = self._create_output_dir(target)
         self.open_ports = []
         
@@ -115,8 +120,17 @@ class ActiveRecon:
         print(f"{Colors.YELLOW}{'═' * 80}{Colors.RESET}")
         
         rustscan_file = os.path.join(self.output_dir, "rustscan.txt")
+        hint_ports = get_hint_ports()
+        if shutil.which("rustscan"):
+            scan_command = f"rustscan -a {self.target} --range 1-65535 --ulimit 5000 -b 500 -t 2000"
+        else:
+            if hint_ports:
+                scan_command = f"nmap -sT -sV --version-light -n -Pn --open -T4 --max-retries 0 --host-timeout 45s -p{hint_ports} {self.target}"
+            else:
+                scan_command = f"nmap -Pn -sV -O -T4 --open -p- {self.target}"
+
         success = self._run_command_with_output(
-            f"rustscan -a {self.target} --range 1-65535 -t 5000",
+            scan_command,
             rustscan_file,
             "Fast port scanning with rustscan"
         )
@@ -285,7 +299,7 @@ class ActiveRecon:
                     )
                 elif service.lower() == 'ftp':
                     self._run_command_with_output(
-                        f"ftp-anon {self.target} {port}",
+                        f"nmap --script ftp-anon -p {port} {self.target}",
                         enum_file,
                         f"FTP anonymous access check on port {port}"
                     )
